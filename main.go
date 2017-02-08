@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/urfave/cli"
 	"os"
 	"os/signal"
 )
@@ -14,9 +15,43 @@ var (
 )
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	app := cli.NewApp()
 
-	loadSharedDictionary()
+	app.Description = "Automatically translates text in clipboard"
+
+	app.HideVersion = true
+
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "verbose, v",
+			Usage: "Spam debug messages",
+		},
+		cli.BoolFlag{
+			Name:  "vnr",
+			Usage: "Load shared VNR dictionary",
+		},
+	}
+
+	app.Action = func(c *cli.Context) error {
+		startMonitoring(c)
+
+		return nil
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func startMonitoring(c *cli.Context) {
+	if c.Bool("verbose") {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	if c.Bool("vnr") {
+		loadSharedDictionary()
+	}
 
 	log.Info("Starting system clipboard monitoring~")
 	go monitorCliboard()
@@ -53,9 +88,8 @@ func processInput(text string) {
 	}
 
 	out, err := translateString(text)
-
 	if err != nil {
-		log.Errorf("Failed to translate: %q", err)
+		log.Errorf("Failed to translate")
 		return
 	}
 
